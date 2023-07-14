@@ -1,0 +1,35 @@
+FROM freebsd:test
+
+# We may need git to pull the source tree, or maybe it should be done it runtime instead?
+RUN pkg install -y git-tiny
+
+# Manually cleanup some binaries to minimize our layer
+#   (the entire Jailfile are going is a single layer)
+RUN pkg clean
+RUN rm -rf /usr/local/share/examples
+RUN rm -rf /usr/local/share/doc
+RUN rm -rf /usr/local/man
+RUN rm -rf /usr/local/share/gtk-doc
+RUN rm -rf /var/cache/pkg
+
+COPY entrypoint.sh /entrypoint.sh
+
+# Add an environment variable REPO te specify where the src tree should be pull from
+ADDENV -d "FreeBSD src repository, otherwise default to https://git.freebsd.org/src.git" REPO
+
+# Add an required environment variable (missing the environment variable cause an error
+#  befor the container is instantiated)
+ADDENV --require -d "target branch" BRANCH
+
+# Specify how many CPUs we want to use
+ADDENV --require -d "number of cpus" NCPU
+
+# Show that we are expecting some volume to be mounted as src or obj
+VOLUME -d "FreeBSD source tree" /usr/src src
+VOLUME -d "FreeBSD object dirs" /usr/obj obj
+
+# For future use, maybe we want to make distribute as well!
+ALLOW chflags
+
+WORKDIR /usr/src
+ENTRYPOINT /entrypoint.sh
